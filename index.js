@@ -83,7 +83,7 @@ function roleEnterOrder(sessionID, lastResult) {
     let isNotBreakdowUp = true; // Xanh
     let isNotBreakdowDown = true; // Đỏ
     listContinue.reverse().forEach((e, ind) => {
-        if (ind) {
+        if (!ind) { // Xét các phiên chẵn
             if (e.lastResult === 0) {
                 // Xanh
                 isNotBreakdowDown = false;
@@ -93,7 +93,7 @@ function roleEnterOrder(sessionID, lastResult) {
         }
     });
 
-    if ((isNotBreakdowUp || isNotBreakdowDown) && CONFIG.historys.length >= CONFIG.countTradeContinue) {
+    if ((isNotBreakdowUp || isNotBreakdowDown) && CONFIG.historys.length >= CONFIG.countTradeContinue * 2) {
         // Thông 7 lệnh liên tiếp
         TeleGlobal.sendMessage(TELEGRAM_CHANNEL, `⌁ Thông ${CONFIG.countTradeContinue} lệnh ${coverLastResult(lastResult)} liên tiếp.`, { parse_mode: 'HTML' });
 
