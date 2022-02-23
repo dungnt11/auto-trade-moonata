@@ -94,9 +94,6 @@ function roleEnterOrder(sessionID, lastResult) {
     });
 
     if ((isNotBreakdowUp || isNotBreakdowDown) && CONFIG.historys.length >= CONFIG.countTradeContinue * 2) {
-        // Thông 7 lệnh liên tiếp
-        TeleGlobal.sendMessage(TELEGRAM_CHANNEL, `⌁ Thông ${CONFIG.countTradeContinue} lệnh ${coverLastResult(lastResult)} liên tiếp.`, { parse_mode: 'HTML' });
-
         if (CONFIG.autoTrade) {
             TeleGlobal.sendMessage(TELEGRAM_CHANNEL, `Hệ thống sẽ tự động vào lệnh cho phiên tiếp theo`, { parse_mode: 'HTML' });
         } else {
