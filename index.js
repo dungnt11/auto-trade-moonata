@@ -83,7 +83,7 @@ function roleEnterOrder(sessionID, lastResult) {
     let isNotBreakdowUp = true; // Xanh
     let isNotBreakdowDown = true; // Đỏ
     listContinue.reverse().forEach((e, ind) => {
-        if (!ind) { // Xét các phiên chẵn
+        if (ind % 2 === 0) { // Xét các phiên chẵn
             if (e.lastResult === 0) {
                 // Xanh
                 isNotBreakdowDown = false;
