@@ -52,17 +52,9 @@ function coverLastResult(resultArg) {
 }
 
 var lastResult = null; // 0: Xanh 1: Đỏ
-var idSession = null; // ID phiên hiện tại
+var idLastSession = null; // ID phiên cuối cùng tương ứng kết quả ở trên
+var d = null;
 
-/**
-    {
-        money: 0,
-        trend: "", // Up | Down
-        sessionID: 0, // Phiên giao dịch
-        time: "", // Thời gian vào lệnh
-        ind: -1, // Số lần vào lệnh. Sẽ vào lệnh theo CONFIG -> nếu vượt quá số lần vào lệnh sẽ dừng lại.
-    }[]
- */
 var historyEnterOrder = []; // Lịch sử vào lệnh
 var lastEnterTheOrder = {
   enable: false,
@@ -71,9 +63,9 @@ var lastEnterTheOrder = {
   sessionID: 0, // Phiên giao dịch
   isWin: false,
   time: "", // Thời gian vào lệnh
+  isGoOrder: false,
   ind: 0, // Số lần vào lệnh. Sẽ vào lệnh theo CONFIG -> nếu vượt quá số lần vào lệnh sẽ dừng lại.
-  isEnterTheOrder: false, // Nếu vào lệnh thành công cái này sẽ là true
-}; // Nhật kí vào lệnh hiện tại
+};
 
 /**
  * Tất cả config ở đây
@@ -124,7 +116,7 @@ function roleEnterOrder(sessionID, lastResult) {
       );
 
       lastEnterTheOrder.enable = true;
-      lastEnterTheOrder.sessionID = idSession + 1;
+      lastEnterTheOrder.sessionID = idLastSession + 1;
 
       if (isNotBreakdowUp) {
         lastEnterTheOrder.trend = "sell";
@@ -148,11 +140,7 @@ function roleEnterOrder(sessionID, lastResult) {
 
 // check xem có phiên nào đang vào lệnh không
 function checkSessionEnterOrder(sessionIDEnd, lastResultSessionEnd) {
-  if (
-    lastEnterTheOrder.enable &&
-    sessionIDEnd === lastEnterTheOrder.sessionID &&
-    lastEnterTheOrder.isEnterTheOrder
-  ) {
+  if (sessionIDEnd === lastEnterTheOrder.sessionID + 1 && lastEnterTheOrder.isGoOrder && CONFIG.moneyEnterOrder[lastEnterTheOrder.ind]) {
     // Nếu đang bật auto vào lệnh thì mới kiểm tra
     const coverResult = (() => {
       switch (lastResultSessionEnd) {
@@ -171,9 +159,11 @@ function checkSessionEnterOrder(sessionIDEnd, lastResultSessionEnd) {
           TELEGRAM_CHANNEL,
 `Bạn vừa thắng lệnh phiên ${lastEnterTheOrder.sessionID} với lệnh ${lastEnterTheOrder.trend}.
 ⏰: ${lastEnterTheOrder.time}
-💰: ${CONFIG.moneyEnterOrder[lastEnterTheOrder.ind] * 0.95}$`,
+💰 Lãi: ${CONFIG.moneyEnterOrder[lastEnterTheOrder.ind] * 0.95}$
+💰 Tổng: ${d.demoBalance + CONFIG.moneyEnterOrder[lastEnterTheOrder.ind] * 0.95}`,
           { parse_mode: "HTML" }
         );
+        d.demoBalance += CONFIG.moneyEnterOrder[lastEnterTheOrder.ind] * 0.95;
         // Update history
         const indHistoryOrder = historyEnterOrder.findIndex((e) => e.sessionID === lastEnterTheOrder.sessionID);
         if (indHistoryOrder > -1) {
@@ -187,6 +177,7 @@ function checkSessionEnterOrder(sessionIDEnd, lastResultSessionEnd) {
           trend: "", // Up | Down
           sessionID: 0, // Phiên giao dịch
           time: "", // Thời gian vào lệnh
+          isGoOrder: false,
           ind: 0, // Số lần vào lệnh. Sẽ vào lệnh theo CONFIG -> nếu vượt quá số lần vào lệnh sẽ dừng lại.
         };
       } else {
@@ -194,13 +185,15 @@ function checkSessionEnterOrder(sessionIDEnd, lastResultSessionEnd) {
           TELEGRAM_CHANNEL,
 `Bạn vừa thua lệnh phiên ${lastEnterTheOrder.sessionID} với lệnh ${lastEnterTheOrder.trend}.
 ⏰: ${lastEnterTheOrder.time}
-💰: ${CONFIG.moneyEnterOrder[lastEnterTheOrder.ind]}$
-Bạn sẽ vào lệnh ở phiên tiếp theo!`,
+💰 Thua: ${CONFIG.moneyEnterOrder[lastEnterTheOrder.ind]}$
+💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[lastEnterTheOrder.ind]}$
+Bạn sẽ vào lệnh ở phiên tiếp theo(${lastEnterTheOrder.sessionID + 1})!`,
           { parse_mode: "HTML" }
         );
+        d.demoBalance -= CONFIG.moneyEnterOrder[lastEnterTheOrder.ind];
         // Thua ở đâu gấp đôi ở đó
         lastEnterTheOrder.ind += 1;
-        lastEnterTheOrder.sessionID = lastEnterTheOrder.sessionID + 1;
+        lastEnterTheOrder.sessionID += 1;
       }
     }
   }
@@ -256,7 +249,7 @@ ${coverLastResult(CONFIG.historys[3])} ${coverLastResult(
 }
 
 puppeteer
-  .launch({ headless: true, args: ["--no-sandbox"] })
+  .launch({ headless: false, args: ["--no-sandbox"] })
   .then(async (browser) => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 768 });
@@ -286,18 +279,39 @@ puppeteer
     let id = 1;
     count = 0;
     let countStaticData = 0;
+    let t;
 
     const printResponse = async function (cdp, response) {
       if (!response.response) {
         return;
       }
       let data = response.response.payloadData;
-
-      if (data.includes("BO_PRICE")) {
-        const currentSessionID = JSON.parse(data.substr(2, data.length))[1].session;
-        idSession = currentSessionID;
+      if (data.includes("BO_CHART_INDICATORS")) {
+        const moneyOrder = CONFIG.moneyEnterOrder[lastEnterTheOrder.ind]; // Tiền vào lệnh
+        if (
+          lastEnterTheOrder.enable &&
+          idLastSession + 1 === lastEnterTheOrder.sessionID &&
+          moneyOrder
+        ) {
+          // Tự động vào lệnh theo chỉ thị
+          const enterOrdered = await enterOrderFn(
+            lastEnterTheOrder.trend,
+            moneyOrder,
+            TELEGRAM_CHANNEL
+          );
+          if (enterOrdered) {
+            // Nếu vào lệnh thành công
+            lastEnterTheOrder.money = moneyOrder;
+            lastEnterTheOrder.trend = lastEnterTheOrder.trend;
+            lastEnterTheOrder.sessionID = idLastSession + 1;
+            lastEnterTheOrder.time = new Date().toLocaleString();
+            lastEnterTheOrder.isWin = false;
+            lastEnterTheOrder.enable = false;
+            lastEnterTheOrder.isGoOrder = true;
+            historyEnterOrder.push(lastEnterTheOrder);
+          }
+        }
       }
-
       if (
         data.includes("SOCKET_BO_LAST_RESULT") &&
         data.includes("finalSide")
@@ -319,6 +333,7 @@ puppeteer
           } else if (finalSide === "NORMAL") {
             lastResult = 2;
           }
+          idLastSession = dataParse.session;
           // Xử lý các trường hợp
           roleEnterOrder(dataParse.session, lastResult);
           checkSessionEnterOrder(dataParse.session, lastResult);
@@ -326,37 +341,6 @@ puppeteer
       }
       if (data === "3") {
         countStaticData++;
-        const moneyOrder = CONFIG.moneyEnterOrder[lastEnterTheOrder.ind]; // Tiền vào lệnh
-
-        if (
-          lastEnterTheOrder.enable &&
-          idSession === lastEnterTheOrder.sessionID &&
-          moneyOrder
-        ) {
-          // Tự động vào lệnh theo chỉ thị
-          const enterOrdered = enterOrderFn(
-            lastEnterTheOrder.trend,
-            moneyOrder,
-            TELEGRAM_CHANNEL
-          );
-          if (enterOrdered) {
-            // Nếu vào lệnh thành công
-            lastEnterTheOrder.money = moneyOrder;
-            lastEnterTheOrder.trend = lastEnterTheOrder.trend;
-            lastEnterTheOrder.sessionID = idSession;
-            lastEnterTheOrder.time = new Date().toLocaleString();
-            lastEnterTheOrder.isWin = false;
-            lastEnterTheOrder.isEnterTheOrder = true;
-            const indHistory = historyEnterOrder.findIndex((e) => e.sessionID === idSession);
-            if (indHistory > -1) {
-              historyEnterOrder.splice(indHistory, 1, lastEnterTheOrder);
-            } else {
-              historyEnterOrder.push(lastEnterTheOrder);
-            }
-          } else {
-            lastEnterTheOrder.isEnterTheOrder = false;
-          }
-        }
       } else {
         countStaticData = 0;
       }
@@ -369,10 +353,28 @@ puppeteer
       }
     };
     cdp.on("Network.webSocketFrameReceived", printResponse.bind(this, cdp));
-    cdp.on("Network.webSocketCreated", async (response) => {
+    cdp.on("Network.webSocketCreated", () => {
       console.log("Vào webSocketCreated");
-      console.log(response);
     });
+
+    page.on('response', async (response) => {
+      const request = response.request();
+      if (request.url().includes('binaryoption/spot-balance')){
+          const res = await response.json();
+          if (res.ok) {
+            d = res.d;
+            TeleGlobal.sendMessage(
+              TELEGRAM_CHANNEL,
+              `
+💰 TK Demo: ${d.demoBalance}
+💰 TK USDT: ${d.usdtAvailableBalance}
+💰 TK ALI: ${d.aliAvailableBalance}
+              `,
+              { parse_mode: "HTML" }
+            );
+          }
+      }
+  })
 
     function isEnterOrderFn() {
       return page.evaluate(() => {
@@ -419,7 +421,7 @@ puppeteer
         if (isEnterOrderSuccess) {
           TeleGlobal.sendMessage(
             myTelegramID,
-            `👌 Đặt lệnh ${type} | ${countMoney}$ | ${idSession} thành công!`,
+            `👌 Đặt lệnh ${type} | ${countMoney}$ | ${idLastSession + 1} thành công!`,
             { parse_mode: "HTML" }
           );
         } else {
@@ -431,14 +433,7 @@ puppeteer
         }
 
         await page.reload({ waitUntil: ["networkidle0"] });
-      } else {
-        TeleGlobal.sendMessage(
-          myTelegramID,
-          `✋ Đang trong phiên chờ kết quả!`,
-          { parse_mode: "HTML" }
-        );
       }
-
       return isEnterOrder;
     }
 
@@ -504,28 +499,24 @@ SELL: /sell:[number]`,
         return;
       }
 
-      if (text === "test") {
+      if (text.toLowerCase() === "test") {
         lastEnterTheOrder.enable = true;
-        lastEnterTheOrder.sessionID = idSession + 1;
+        lastEnterTheOrder.sessionID = idLastSession + 1;
         lastEnterTheOrder.trend = "sell";
 
         TeleGlobal.sendMessage(
           myTelegramID,
-          `Bật chế độ test. Bạn sẽ vào lệnh mua ở phiên sau`,
-          {
-            parse_mode: "HTML",
-          }
+          `Bật chế độ test. Bạn sẽ vào lệnh mua ở phiên sau!`,
+          { parse_mode: "HTML" }
         );
         return;
       }
 
-      if (text === "test1") {
+      if (text.toLowerCase() === "kq") {
         TeleGlobal.sendMessage(
           myTelegramID,
-          JSON.stringify({ historyEnterOrder, lastEnterTheOrder, idSession }, null, 2),
-          {
-            parse_mode: "HTML",
-          }
+          JSON.stringify({ lastEnterTheOrder, idLastSession }, null, 2),
+          { parse_mode: "HTML" }
         );
         return;
       }
