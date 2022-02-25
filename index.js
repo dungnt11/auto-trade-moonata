@@ -363,15 +363,6 @@ puppeteer
           const res = await response.json();
           if (res.ok) {
             d = res.d;
-            TeleGlobal.sendMessage(
-              TELEGRAM_CHANNEL,
-              `
-💰 TK Demo: ${d.demoBalance}
-💰 TK USDT: ${d.usdtAvailableBalance}
-💰 TK ALI: ${d.aliAvailableBalance}
-              `,
-              { parse_mode: "HTML" }
-            );
           }
       }
   })
@@ -449,7 +440,8 @@ puppeteer
 4. /set_count_trade:[number] - Gặp số lượng lệnh thông như này thì đánh ngược lại
 5. /set_money_enter:[5,10,20,40] - Vào tiền khi đủ điều kiện
 6. /history - Vào tiền khi đủ điều kiện
-7. /analytic - Thống kê theo ngày;`,
+7. /check_tk - Vào tiền khi đủ điều kiện
+8. /analytic - Thống kê theo ngày;`,
           { parse_mode: "HTML" }
         );
         return;
@@ -461,6 +453,19 @@ puppeteer
         TeleGlobal.sendMessage(
           myTelegramID,
           JSON.stringify(CONFIG_CLONED, null, 2),
+          { parse_mode: "HTML" }
+        );
+        return;
+      }
+
+      if (text === "/check_tk") {
+        TeleGlobal.sendMessage(
+          TELEGRAM_CHANNEL,
+          `
+💰 TK Demo: ${d.demoBalance}
+💰 TK USDT: ${d.usdtAvailableBalance}
+💰 TK ALI: ${d.aliAvailableBalance}
+          `,
           { parse_mode: "HTML" }
         );
         return;
