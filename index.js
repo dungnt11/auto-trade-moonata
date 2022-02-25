@@ -192,6 +192,9 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${lastEnterTheOrder.sessionID + 1}
         );
         d.demoBalance -= CONFIG.moneyEnterOrder[lastEnterTheOrder.ind];
         // Thua ở đâu gấp đôi ở đó
+        lastEnterTheOrder.enable = true;
+        lastEnterTheOrder.money = 0;
+        lastEnterTheOrder.isGoOrder = false;
         lastEnterTheOrder.ind += 1;
         lastEnterTheOrder.sessionID += 1;
       }
@@ -460,7 +463,7 @@ puppeteer
 
       if (text === "/check_tk") {
         TeleGlobal.sendMessage(
-          TELEGRAM_CHANNEL,
+          myTelegramID,
           `
 💰 TK Demo: ${d.demoBalance}
 💰 TK USDT: ${d.usdtAvailableBalance}
