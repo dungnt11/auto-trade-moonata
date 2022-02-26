@@ -446,6 +446,7 @@ function roleEnterOrder(sessionID, lastResult) {
     } else {
       if (enterOrder.ind < CONFIG.moneyEnterOrder.length) {
         // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
+        enterOrder.sessionID += 2;
         TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
         `Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
@@ -456,7 +457,6 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${enterOrder.sessionID})!`,
             { parse_mode: "HTML" }
         );
         d.demoBalance -= CONFIG.moneyEnterOrder[enterOrder.ind];
-        enterOrder.sessionID += 2;
         enterOrder.ind += 1;
       } else {
         // Reset
