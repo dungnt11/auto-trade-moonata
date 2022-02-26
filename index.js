@@ -458,6 +458,8 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${enterOrder.sessionID})!`,
         );
         d.demoBalance -= CONFIG.moneyEnterOrder[enterOrder.ind];
         enterOrder.ind += 1;
+        enterOrder.enable = true;
+        enterOrder.time = '';
       } else {
         // Reset
         enterOrder = {
