@@ -50,7 +50,9 @@ const CONFIG = {
   countTradeContinue: 7, // 7 lệnh thông thì đánh ngược lại
   moneyEnterOrder: [5, 10, 20, 40, 80], // Nếu gặp 7 lệnh thông sẽ đánh ngược lại với từng mệnh giá này
   maxHistory: 40, // Lưu lại lịch sử 40 phiên
-  historys: [], // Lưu lại lịch sử
+  historys: [], // Lịch sử lệnh
+  historyEnterOrder: [], // Lịch sử vào lệnh
+  enterOrderList: [], // Lệnh đang vào
 };
 
 puppeteer
@@ -108,6 +110,7 @@ puppeteer
           enterOrder.time = new Date().toLocaleString('vi-VN');
           const moneyEnterOrder = CONFIG.moneyEnterOrder[enterOrder.ind];
           await enterOrderFn(enterOrder.trend === 0 ? 'buy' : 'sell', moneyEnterOrder, TELEGRAM_CHANNEL);
+          CONFIG.enterOrderList.push(currentSessionID);
         }
       }
 
@@ -269,7 +272,8 @@ puppeteer
 5. /set_money_enter:number1,number2 - Vào tiền khi đủ điều kiện;
 6. /history - Vào tiền khi đủ điều kiện;
 7. /check_tk - Check tiền ví;
-8. /analytic - Thống kê theo ngày;`,
+8. /clear_history - Xoá toàn bộ lịch sử giao dịch;
+9. /view_history - Xem toàn bộ lịch sử vào lệnh;`,
           { parse_mode: "HTML" }
         );
         return;
@@ -347,12 +351,37 @@ SELL: /sell:[number]`,
         TeleGlobal.sendMessage(myTelegramID, `Cập nhật thành công. ${countTrade} lệnh thông thì đánh ngược lại`, {
           parse_mode: "HTML",
         });
+        return;
       }
 
       if (text.startsWith('/set_money_enter')) {
         const moneyEnterOrderNew = text.replace("/set_money_enter:", "").split(',');
         CONFIG.moneyEnterOrder = moneyEnterOrderNew;
         TeleGlobal.sendMessage(myTelegramID, `Cập nhật thành công. ${moneyEnterOrderNew.join(',')} số tiền giới hạn khi đánh đảo chiều`, {
+          parse_mode: "HTML",
+        });
+        return;
+      }
+
+      if (text.startsWith('/clear_history')) {
+        CONFIG.historyEnterOrder = [];
+        TeleGlobal.sendMessage(myTelegramID, `Xoá toàn bộ lịch sử vào lệnh thành công`, {
+          parse_mode: "HTML",
+        });
+
+        return;
+      }
+
+      if (text.startsWith('/view_history')) {
+        let textResult = '';
+        if (!CONFIG.historyEnterOrder.length) {
+          textResult = 'Chưa có lịch sử giao dịch!';
+        } else {
+          CONFIG.historyEnterOrder.forEach((e) => {
+            textResult += `${e.sessionID} | ${e.trend} | ${e.time} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
+          });
+        }
+        TeleGlobal.sendMessage(myTelegramID, textResult, {
           parse_mode: "HTML",
         });
       }
@@ -438,7 +467,7 @@ function roleEnterOrder(sessionID, lastResult) {
   }
 
   // PHIÊN ĐÃ VÀO LỆNH SẼ CHECK - sessionID - 1 = enterOrder.sessionID
-  if (enterOrder.sessionID === sessionID - 1) {
+  if (CONFIG.enterOrderList.includes(sessionID - 1)) {
     if (enterOrder.trend === lastResult) {
       // WIN session
       TeleGlobal.sendMessage(
@@ -450,6 +479,14 @@ function roleEnterOrder(sessionID, lastResult) {
           { parse_mode: "HTML" }
       );
       d.demoBalance += CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95;
+
+      CONFIG.historyEnterOrder.push({
+        sessionID: sessionID - 1,
+        trend: coverLastResult(lastResult),
+        time: enterOrder.time,
+        isWin: true,
+        money: CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95,
+      });
 
       // Reset
       enterOrder = {
@@ -473,6 +510,15 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${enterOrder.sessionID})!`,
             { parse_mode: "HTML" }
         );
         d.demoBalance -= CONFIG.moneyEnterOrder[enterOrder.ind];
+
+        CONFIG.historyEnterOrder.push({
+          sessionID: sessionID - 1,
+          trend: coverLastResult(lastResult),
+          time: enterOrder.time,
+          isWin: false,
+          money: CONFIG.moneyEnterOrder[enterOrder.ind],
+        });
+
         enterOrder.ind += 1;
         enterOrder.enable = true;
         enterOrder.time = '';
@@ -492,6 +538,8 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${enterOrder.sessionID})!`,
         );
       }
     }
+
+    CONFIG.enterOrderList = CONFIG.enterOrderList.filter((e) => e !== sessionID - 1);
   }
 }
 
