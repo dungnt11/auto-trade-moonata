@@ -216,7 +216,7 @@ puppeteer
       if (isEnterOrderSuccess) {
         TeleGlobal.sendMessage(
           myTelegramID,
-          `👌 Đặt lệnh ${type} | ${countMoney}$ thành công!`,
+          `👌 Đặt lệnh ${type} | ${countMoney}$ ${` | ${enterOrder.sessionID}` || ""} thành công!`,
           { parse_mode: "HTML" }
         );
       } else {
