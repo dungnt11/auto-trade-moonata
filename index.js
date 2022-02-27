@@ -54,7 +54,7 @@ const CONFIG = {
 };
 
 puppeteer
-  .launch({ headless: true, args: ["--no-sandbox"] })
+  .launch({ headless: false, args: ["--no-sandbox"] })
   .then(async (browser) => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 768 });
@@ -265,8 +265,8 @@ puppeteer
           `1. /config - lấy cấu hình hiện tại;
 2. /enable_auto_trade - Bật auto trade;
 3. /disable_auto_trade - Tắt auto trade;
-4. /set_count_trade:[number] - Gặp số lượng lệnh thông như này thì đánh ngược lại;
-5. /set_money_enter:[5,10,20,40] - Vào tiền khi đủ điều kiện;
+4. /set_count_trade:number - Gặp số lượng lệnh thông như này thì đánh ngược lại;
+5. /set_money_enter:number1,number2 - Vào tiền khi đủ điều kiện;
 6. /history - Vào tiền khi đủ điều kiện;
 7. /check_tk - Check tiền ví;
 8. /analytic - Thống kê theo ngày;`,
@@ -341,6 +341,22 @@ SELL: /sell:[number]`,
         return;
       }
 
+      if (text.startsWith('/set_count_trade')) {
+        const countTrade = Number(text.replace("/set_count_trade:", ""));
+        CONFIG.countTradeContinue = countTrade;
+        TeleGlobal.sendMessage(myTelegramID, `Cập nhật thành công. ${countTrade} lệnh thông thì đánh ngược lại`, {
+          parse_mode: "HTML",
+        });
+      }
+
+      if (text.startsWith('/set_money_enter')) {
+        const moneyEnterOrderNew = text.replace("/set_money_enter:", "").split(',');
+        CONFIG.moneyEnterOrder = moneyEnterOrderNew;
+        TeleGlobal.sendMessage(myTelegramID, `Cập nhật thành công. ${moneyEnterOrderNew.join(',')} số tiền giới hạn khi đánh đảo chiều`, {
+          parse_mode: "HTML",
+        });
+      }
+
       // Nếu đang trong phiên chờ thì không mua bán gì
       if (text.startsWith("/buy:")) {
         const totalBuy = Number(text.replace("/buy:", ""));
@@ -408,7 +424,7 @@ function roleEnterOrder(sessionID, lastResult) {
       }
 
       TeleGlobal.sendMessage(
-          myTelegramID,
+          TELEGRAM_CHANNEL,
           `${textAlert} Hệ thống đã tự vào lệnh ${coverLastResult(enterOrder.trend)} cho phiên sau(${enterOrder.sessionID})!`,
           { parse_mode: "HTML" }
       );
@@ -427,7 +443,7 @@ function roleEnterOrder(sessionID, lastResult) {
       // WIN session
       TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
-          `Bạn vừa thắng lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
+          `🎉 Bạn vừa thắng lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
 ⏰ Vào lệnh: ${enterOrder.time}
 💰 Lãi: ${CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95}$
 💰 Tổng: ${d.demoBalance + CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95}`,
@@ -449,7 +465,7 @@ function roleEnterOrder(sessionID, lastResult) {
         enterOrder.sessionID += 2;
         TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
-        `Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
+        `🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
 ⏰ Vào lệnh: ${enterOrder.time}
 💰 Thua: ${CONFIG.moneyEnterOrder[enterOrder.ind]}$
 💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[enterOrder.ind]}$
