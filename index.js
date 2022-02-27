@@ -56,7 +56,7 @@ const CONFIG = {
 };
 
 puppeteer
-  .launch({ headless: false, args: ["--no-sandbox"] })
+  .launch({ headless: true, args: ["--no-sandbox"] })
   .then(async (browser) => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 768 });
