@@ -501,7 +501,12 @@ function roleEnterOrder(sessionID, lastResult) {
     } else {
       if (currentEnterOrderCheck.ind < CONFIG.moneyEnterOrder.length) {
         // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
-        enterOrder.sessionID += 2;
+        if (CONFIG.enterOrderList.length > 1) {
+          // Nếu đang có 2 phiên chờ thì đánh theo phiên cuối
+          enterOrder.sessionID = CONFIG.moneyEnterOrder[CONFIG.moneyEnterOrder.length - 1].sessionID + 2;
+        } else {
+          enterOrder.sessionID += 2;
+        }
         TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
         `🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
