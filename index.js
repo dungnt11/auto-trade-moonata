@@ -483,30 +483,34 @@ function roleEnterOrder(sessionID, lastResult) {
       deleteCurrentEnterOrder();
     } else {
       // Nếu vẫn còn vốn xoay vòng thì đánh tiếp, nhưng nếu phiên sau đủ điều kiện vào lệnh và đã đánh rồi, thì không cộng dồn lệnh nữa
-      if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length && !CONFIG.enterOrderList.map((e) => e.sessionID).includes(currentEnterOrder.sessionID + 2)) {
-        currentEnterOrder.sessionID += 2;
-        TeleGlobal.sendMessage(
-          TELEGRAM_CHANNEL,
-`🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
-⏰ Vào lệnh: ${currentEnterOrder.time}
-💰 Thua: ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
-💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
-Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
-            { parse_mode: "HTML" }
-        );
-        d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
-
-        CONFIG.historyEnterOrder.push({
-          sessionID: sessionID - 1,
-          trend: coverLastResult(lastResult),
-          time: currentEnterOrder.time,
-          isWin: false,
-          money: CONFIG.moneyEnterOrder[currentEnterOrder.ind],
-        });
-
-        currentEnterOrder.ind += 1;
-        currentEnterOrder.enable = true;
-        currentEnterOrder.time = '';
+      const isEnterOrderd = !CONFIG.enterOrderList.map((e) => e.sessionID).includes(currentEnterOrder.sessionID + 2);
+      if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length) {
+        if (isEnterOrderd) {
+          // Nếu ở trên chưa đặt lệnh thì mới vào
+          currentEnterOrder.sessionID += 2;
+          TeleGlobal.sendMessage(
+            TELEGRAM_CHANNEL,
+  `🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
+  ⏰ Vào lệnh: ${currentEnterOrder.time}
+  💰 Thua: ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
+  💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
+  Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
+              { parse_mode: "HTML" }
+          );
+          d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
+  
+          CONFIG.historyEnterOrder.push({
+            sessionID: sessionID - 1,
+            trend: coverLastResult(lastResult),
+            time: currentEnterOrder.time,
+            isWin: false,
+            money: CONFIG.moneyEnterOrder[currentEnterOrder.ind],
+          });
+  
+          currentEnterOrder.ind += 1;
+          currentEnterOrder.enable = true;
+          currentEnterOrder.time = '';
+        }
       } else {
         deleteCurrentEnterOrder();
         TeleGlobal.sendMessage(
