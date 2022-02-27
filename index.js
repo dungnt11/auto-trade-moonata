@@ -526,9 +526,12 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrderCheck.sessionID
           money: CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind],
         });
 
-        enterOrder.ind += 1;
-        enterOrder.enable = true;
-        enterOrder.time = '';
+        // Nếu chỉ có 1 phiên trong hàng đợi hoặc 2 phiên thì chờ đến phiên cuối cùng check xong mới đánh tiếp
+        if (CONFIG.enterOrderList.length === 1 || CONFIG.moneyEnterOrder[CONFIG.moneyEnterOrder.length - 1].sessionID === sessionID - 1) {
+          enterOrder.ind += 1;
+          enterOrder.enable = true;
+          enterOrder.time = '';
+        }
       } else {
         // Reset
         enterOrder = {
