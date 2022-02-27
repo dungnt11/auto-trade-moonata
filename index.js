@@ -110,7 +110,7 @@ puppeteer
           enterOrder.time = new Date().toLocaleString('vi-VN');
           const moneyEnterOrder = CONFIG.moneyEnterOrder[enterOrder.ind];
           await enterOrderFn(enterOrder.trend === 0 ? 'buy' : 'sell', moneyEnterOrder, TELEGRAM_CHANNEL);
-          CONFIG.enterOrderList.push(currentSessionID);
+          CONFIG.enterOrderList.push(enterOrder);
         }
       }
 
@@ -467,25 +467,27 @@ function roleEnterOrder(sessionID, lastResult) {
   }
 
   // PHIÊN ĐÃ VÀO LỆNH SẼ CHECK - sessionID - 1 = enterOrder.sessionID
-  if (CONFIG.enterOrderList.includes(sessionID - 1)) {
-    if (enterOrder.trend === lastResult) {
+  const indEnterOrder = CONFIG.enterOrderList.findIndex((e) => e.sessionID === sessionID - 1);
+  if (indEnterOrder > -1) {
+    const currentEnterOrderCheck = CONFIG.enterOrderList[indEnterOrder];
+    if (currentEnterOrderCheck.trend === lastResult) {
       // WIN session
       TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
           `🎉 Bạn vừa thắng lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
-⏰ Vào lệnh: ${enterOrder.time}
-💰 Lãi: ${CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95}$
-💰 Tổng: ${d.demoBalance + CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95}`,
+⏰ Vào lệnh: ${currentEnterOrderCheck.time}
+💰 Lãi: ${CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind] * 0.95}$
+💰 Tổng: ${d.demoBalance + CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind] * 0.95}`,
           { parse_mode: "HTML" }
       );
-      d.demoBalance += CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95;
+      d.demoBalance += CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind] * 0.95;
 
       CONFIG.historyEnterOrder.push({
         sessionID: sessionID - 1,
         trend: coverLastResult(lastResult),
-        time: enterOrder.time,
+        time: currentEnterOrderCheck.time,
         isWin: true,
-        money: CONFIG.moneyEnterOrder[enterOrder.ind] * 0.95,
+        money: CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind] * 0.95,
       });
 
       // Reset
@@ -497,26 +499,26 @@ function roleEnterOrder(sessionID, lastResult) {
         time: '', // Tgian vào lệnh
       }
     } else {
-      if (enterOrder.ind < CONFIG.moneyEnterOrder.length) {
+      if (currentEnterOrderCheck.ind < CONFIG.moneyEnterOrder.length) {
         // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
         enterOrder.sessionID += 2;
         TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
         `🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
-⏰ Vào lệnh: ${enterOrder.time}
-💰 Thua: ${CONFIG.moneyEnterOrder[enterOrder.ind]}$
-💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[enterOrder.ind]}$
-Bạn sẽ vào lệnh ở phiên tiếp theo(${enterOrder.sessionID})!`,
+⏰ Vào lệnh: ${currentEnterOrderCheck.time}
+💰 Thua: ${CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind]}$
+💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind]}$
+Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrderCheck.sessionID})!`,
             { parse_mode: "HTML" }
         );
-        d.demoBalance -= CONFIG.moneyEnterOrder[enterOrder.ind];
+        d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind];
 
         CONFIG.historyEnterOrder.push({
           sessionID: sessionID - 1,
           trend: coverLastResult(lastResult),
-          time: enterOrder.time,
+          time: currentEnterOrderCheck.time,
           isWin: false,
-          money: CONFIG.moneyEnterOrder[enterOrder.ind],
+          money: CONFIG.moneyEnterOrder[currentEnterOrderCheck.ind],
         });
 
         enterOrder.ind += 1;
@@ -539,7 +541,7 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${enterOrder.sessionID})!`,
       }
     }
 
-    CONFIG.enterOrderList = CONFIG.enterOrderList.filter((e) => e !== sessionID - 1);
+    CONFIG.enterOrderList = CONFIG.enterOrderList.filter((e) => e.sessionID !== sessionID - 1);
   }
 }
 
