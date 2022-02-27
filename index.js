@@ -56,7 +56,7 @@ const CONFIG = {
 };
 
 puppeteer
-  .launch({ headless: true, args: ["--no-sandbox"] })
+  .launch({ headless: false, args: ["--no-sandbox"] })
   .then(async (browser) => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 768 });
@@ -95,6 +95,7 @@ puppeteer
 
       if (data.includes("BO_PRICE")) {
         const isDisableBtn = await page.evaluate(() => {
+          if (!document) return false;
           const btnCheck = document.querySelector(
               "#betAmount > div:nth-child(5) > div > div:nth-child(1) > button"
           );
@@ -174,20 +175,6 @@ puppeteer
       }
     })
 
-    function isEnterOrderFn() {
-      let result = false;
-      page.evaluate(() => {
-        const btnCheck = document.querySelector(
-          "#betAmount > div:nth-child(5) > div > div:nth-child(1) > button"
-        );
-        if (btnCheck) {
-          const isDisableBtn = btnCheck.hasAttribute("disabled");
-          result = !isDisableBtn;
-        }
-        result = false;
-      });
-      return result;
-    }
     // Vào lệnh: type - buy/sell
     async function enterOrderFn(type, countMoney, myTelegramID) {
       await page.type(`input#InputNumber`, String(countMoney), {
@@ -549,7 +536,7 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrderCheck.sessionID
       }
     }
 
-    CONFIG.enterOrderList = CONFIG.enterOrderList.filter((e) => e.sessionID !== sessionID - 1);
+    CONFIG.enterOrderList.splice(indEnterOrder, 1);
   }
 }
 
