@@ -88,19 +88,24 @@ puppeteer
     let count;
 
     const printResponse = async function (cdp, response) {
-      if (!response.response) {
+      if (!response.response || !page || !page.evaluate) {
         return;
       }
       let data = response.response.payloadData;
 
       if (data.includes("BO_PRICE")) {
-        const isDisableBtn = await page.evaluate(() => {
-          if (!document) return false;
-          const btnCheck = document.querySelector(
-              "#betAmount > div:nth-child(5) > div > div:nth-child(1) > button"
-          );
-          return btnCheck && !btnCheck.hasAttribute("disabled");
-        });
+        let isDisableBtn = false;
+        try {
+          isDisableBtn = await page.evaluate(() => {
+            if (!document) return false;
+            const btnCheck = document.querySelector(
+                "#betAmount > div:nth-child(5) > div > div:nth-child(1) > button"
+            );
+            return btnCheck && !btnCheck.hasAttribute("disabled");
+          }); 
+        } catch (error) {
+          console.log(`Không tìm thấy page!`);
+        }
         currentSessionID = isDisableBtn ? JSON.parse(data.substr(2, data.length))[1].session : -1;
         // if (currentSessionID !== -1) console.log(currentSessionID);
 
