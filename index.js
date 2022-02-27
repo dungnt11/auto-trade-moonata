@@ -482,8 +482,8 @@ function roleEnterOrder(sessionID, lastResult) {
 
       deleteCurrentEnterOrder();
     } else {
-      if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length) {
-        // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
+      // Nếu vẫn còn vốn xoay vòng thì đánh tiếp, nhưng nếu phiên sau đủ điều kiện vào lệnh và đã đánh rồi, thì không cộng dồn lệnh nữa
+      if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length && !CONFIG.enterOrderList.map((e) => e.sessionID).includes(currentEnterOrder.sessionID + 2)) {
         currentEnterOrder.sessionID += 2;
         TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
