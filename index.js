@@ -378,7 +378,7 @@ SELL: /sell:[number]`,
           textResult = 'Chưa có lịch sử giao dịch!';
         } else {
           CONFIG.historyEnterOrder.forEach((e) => {
-            textResult += `${e.sessionID} | ${e.trend} | ${e.time} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
+            textResult += `${e.time} | ${e.sessionID} | ${e.trend} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
           });
         }
         TeleGlobal.sendMessage(myTelegramID, textResult, {
