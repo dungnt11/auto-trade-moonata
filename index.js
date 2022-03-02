@@ -41,7 +41,7 @@ let dInWeb = null; // Ví tiền theo web
  */
 const CONFIG = {
   autoTrade: true,
-  countTradeContinue: 7, // 7 lệnh thông thì đánh ngược lại
+  countTradeContinue: 1, // 7 lệnh thông thì đánh ngược lại
   moneyEnterOrder: [5, 10, 20, 40, 80], // Nếu gặp 7 lệnh thông sẽ đánh ngược lại với từng mệnh giá này
   maxHistory: 40, // Lưu lại lịch sử 40 phiên
   historys: [], // Lịch sử lệnh
@@ -50,7 +50,7 @@ const CONFIG = {
 };
 
 puppeteer
-  .launch({ headless: true, args: ["--no-sandbox"] })
+  .launch({ headless: false, args: ["--no-sandbox"] })
   .then(async (browser) => {
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 768 });
@@ -388,63 +388,6 @@ function roleEnterOrder(sessionID, lastResult) {
   }
   CONFIG.historys.push({ sessionID, lastResult });
 
-  // 1. Số lệnh thông = 7 thì đánh lệnh ngược lại
-  const listContinue = CONFIG.historys.slice(
-      CONFIG.historys.length - CONFIG.countTradeContinue,
-      CONFIG.historys.length
-  );
-  let isNotBreakdowUp = true; // Xanh
-  let isNotBreakdowDown = true; // Đỏ
-  listContinue.reverse().forEach((e) => {
-    if (e.lastResult === 0) {
-      // Xanh
-      isNotBreakdowDown = false;
-    } else {
-      isNotBreakdowUp = false;
-    }
-  });
-
-  // TỰ VÀO LỆNH KHI ĐỦ ĐIỀU KIỆN
-  if (
-      (isNotBreakdowUp || isNotBreakdowDown) &&
-      CONFIG.historys.length >= CONFIG.countTradeContinue
-  ) {
-    const textAlert = `Hệ thống đang thông ${CONFIG.countTradeContinue} lệnh ${coverLastResult(lastResult)} liên tiếp.`;
-    let trendEnterOrder = -1;
-    if (isNotBreakdowUp) {
-      // Sell - Đỏ
-      trendEnterOrder = 1;
-    }
-    if (isNotBreakdowDown) {
-      // Buy - Xanh
-      trendEnterOrder = 0;
-    }
-    const enterOrder = {
-      enable: true,
-      ind: 0, // Lần vào lệnh thua
-      isWin: true,
-      trend: trendEnterOrder, // Lệnh vào
-      sessionID: sessionID + 1, // Phiên vào lệnh
-      time: '', // Tgian vào lệnh
-    }
-
-    CONFIG.enterOrderList.push(enterOrder);
-
-    if (CONFIG.autoTrade) {
-      TeleGlobal.sendMessage(
-          TELEGRAM_CHANNEL,
-          `${textAlert} Hệ thống đã tự vào lệnh ${coverLastResult(enterOrder.trend)} cho phiên sau(${enterOrder.sessionID})!`,
-          { parse_mode: "HTML" }
-      );
-    } else {
-      TeleGlobal.sendMessage(
-          TELEGRAM_CHANNEL,
-          `${textAlert} Mời bạn vào lệnh phiên sau!`,
-          { parse_mode: "HTML" }
-      );
-    }
-  }
-
   // PHIÊN ĐÃ VÀO LỆNH SẼ CHECK - sessionID - 1 = enterOrder.sessionID
   function currentEnterOrderFn() {
     const indEnterOrder = CONFIG.enterOrderList.findIndex((e) => e.sessionID === sessionID - 1);
@@ -482,41 +425,104 @@ function roleEnterOrder(sessionID, lastResult) {
 
       deleteCurrentEnterOrder();
     } else {
-      // Nếu vẫn còn vốn xoay vòng thì đánh tiếp, nhưng nếu phiên sau đủ điều kiện vào lệnh và đã đánh rồi, thì không cộng dồn lệnh nữa
-      const isEnterOrderd = !CONFIG.enterOrderList.map((e) => e.sessionID).includes(currentEnterOrder.sessionID + 2);
+      // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
       if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length) {
-        if (isEnterOrderd) {
-          // Nếu ở trên chưa đặt lệnh thì mới vào
-          currentEnterOrder.sessionID += 2;
-          TeleGlobal.sendMessage(
-            TELEGRAM_CHANNEL,
-  `🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
-  ⏰ Vào lệnh: ${currentEnterOrder.time}
-  💰 Thua: ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
-  💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
-  Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
-              { parse_mode: "HTML" }
-          );
-          d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
-  
-          CONFIG.historyEnterOrder.push({
-            sessionID: sessionID - 1,
-            trend: coverLastResult(lastResult),
-            time: currentEnterOrder.time,
-            isWin: false,
-            money: CONFIG.moneyEnterOrder[currentEnterOrder.ind],
-          });
-  
-          currentEnterOrder.ind += 1;
-          currentEnterOrder.enable = true;
-          currentEnterOrder.time = '';
-        }
+        currentEnterOrder.sessionID += 2;
+        TeleGlobal.sendMessage(
+          TELEGRAM_CHANNEL,
+`🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
+⏰ Vào lệnh: ${currentEnterOrder.time}
+💰 Thua: ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
+💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
+Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
+            { parse_mode: "HTML" }
+        );
+        d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
+
+        CONFIG.historyEnterOrder.push({
+          sessionID: sessionID - 1,
+          trend: coverLastResult(lastResult),
+          time: currentEnterOrder.time,
+          isWin: false,
+          money: CONFIG.moneyEnterOrder[currentEnterOrder.ind],
+        });
+
+        currentEnterOrder.ind += 1;
+        currentEnterOrder.enable = true;
+        currentEnterOrder.time = '';
       } else {
         deleteCurrentEnterOrder();
         TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
           `Bạn đã thua hết số vốn cài đặt. Hệ thống sẽ không tự động đánh nữa!`,
           { parse_mode: "HTML" }
+        );
+      }
+    }
+  }
+
+  // 1. Số lệnh thông = 7 thì đánh lệnh ngược lại
+  const listContinue = CONFIG.historys.slice(
+    CONFIG.historys.length - CONFIG.countTradeContinue,
+    CONFIG.historys.length
+  );
+  let isNotBreakdowUp = true; // Xanh
+  let isNotBreakdowDown = true; // Đỏ
+  listContinue.reverse().forEach((e) => {
+    if (e.lastResult === 0) {
+      // Xanh
+      isNotBreakdowDown = false;
+    } else {
+      isNotBreakdowUp = false;
+    }
+  });
+
+  // TỰ VÀO LỆNH KHI ĐỦ ĐIỀU KIỆN
+  if (
+      (isNotBreakdowUp || isNotBreakdowDown) &&
+      CONFIG.historys.length >= CONFIG.countTradeContinue
+  ) {
+    const isEnterOrderd = CONFIG.enterOrderList.map((e) => e.sessionID).includes(sessionID + 1);
+    const textAlert = `Hệ thống đang thông ${CONFIG.countTradeContinue} lệnh ${coverLastResult(lastResult)} liên tiếp.`;
+    if (isEnterOrderd) {
+      TeleGlobal.sendMessage(
+        TELEGRAM_CHANNEL,
+        `${textAlert} Bạn đã thua lệnh trước (${sessionID - 1}) nên hệ thống tự vào lệnh tiếp theo theo config!`,
+        { parse_mode: "HTML" }
+      );
+      return;
+    } else {
+      let trendEnterOrder = -1;
+      if (isNotBreakdowUp) {
+        // Sell - Đỏ
+        trendEnterOrder = 1;
+      }
+      if (isNotBreakdowDown) {
+        // Buy - Xanh
+        trendEnterOrder = 0;
+      }
+      const enterOrder = {
+        enable: true,
+        ind: 0, // Lần vào lệnh thua
+        isWin: true,
+        trend: trendEnterOrder, // Lệnh vào
+        sessionID: sessionID + 1, // Phiên vào lệnh
+        time: '', // Tgian vào lệnh
+      }
+      
+      CONFIG.enterOrderList.push(enterOrder);
+
+      if (CONFIG.autoTrade) {
+        TeleGlobal.sendMessage(
+            TELEGRAM_CHANNEL,
+            `${textAlert} Hệ thống đã tự vào lệnh ${coverLastResult(enterOrder.trend)} cho phiên sau(${enterOrder.sessionID})!`,
+            { parse_mode: "HTML" }
+        );
+      } else {
+        TeleGlobal.sendMessage(
+            TELEGRAM_CHANNEL,
+            `${textAlert} Mời bạn vào lệnh phiên sau!`,
+            { parse_mode: "HTML" }
         );
       }
     }
