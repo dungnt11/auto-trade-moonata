@@ -5,6 +5,8 @@ const cron = require("cron");
 const RecaptchaPlugin = require("puppeteer-extra-plugin-recaptcha");
 const TelegramBot = require("node-telegram-bot-api");
 
+const db = require("./database");
+
 const capchaApi = "74dff1d33afbc505c712408e4bc8c5c2";
 const TELEGRAM_TOKEN = "5205509778:AAEOFE72whCgwOmgr8O-PY1C2h6KZrbAwX4";
 const TELEGRAM_CHANNEL = `@bot_bao_lenh`;
@@ -41,11 +43,10 @@ let dInWeb = null; // Ví tiền theo web
  */
 const CONFIG = {
   autoTrade: true,
-  countTradeContinue: 1, // 7 lệnh thông thì đánh ngược lại
+  countTradeContinue: 2, // 7 lệnh thông thì đánh ngược lại
   moneyEnterOrder: [5, 10, 20, 40, 80], // Nếu gặp 7 lệnh thông sẽ đánh ngược lại với từng mệnh giá này
   maxHistory: 40, // Lưu lại lịch sử 40 phiên
   historys: [], // Lịch sử lệnh
-  historyEnterOrder: [], // Lịch sử vào lệnh
   enterOrderList: [], // Lệnh đang vào
 };
 
@@ -55,7 +56,7 @@ puppeteer
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 768 });
     await page.setDefaultNavigationTimeout(0);
-    await page.goto("https://moonata1.net/login");
+    await page.goto("https://moonata2.net/login");
     await page.type('input[name="email"]', "gavol68807@ishop2k.com", {
       delay: 100,
     });
@@ -259,8 +260,7 @@ puppeteer
 5. /set_money_enter:number1,number2 - Vào tiền khi đủ điều kiện;
 6. /history - Vào tiền khi đủ điều kiện;
 7. /check_tk - Check tiền ví;
-8. /clear_history - Xoá toàn bộ lịch sử giao dịch;
-9. /view_history - Xem toàn bộ lịch sử vào lệnh;`,
+8. /view_history - Xem toàn bộ lịch sử vào lệnh;`,
           { parse_mode: "HTML" }
         );
         return;
@@ -303,10 +303,7 @@ puppeteer
         CONFIG.autoTrade = true;
         TeleGlobal.sendMessage(
           myTelegramID,
-          `Bật auto trade thành công!.
-Để vào lệnh 1 phiên bất kì:
-BUY: /buy:[number]
-SELL: /sell:[number]`,
+          `Bật auto trade thành công!`,
           { parse_mode: "HTML" }
         );
         return;
@@ -350,27 +347,29 @@ SELL: /sell:[number]`,
         return;
       }
 
-      if (text.startsWith('/clear_history')) {
-        CONFIG.historyEnterOrder = [];
-        TeleGlobal.sendMessage(myTelegramID, `Xoá toàn bộ lịch sử vào lệnh thành công`, {
-          parse_mode: "HTML",
-        });
-
-        return;
-      }
-
       if (text.startsWith('/view_history')) {
-        let textResult = '';
-        if (!CONFIG.historyEnterOrder.length) {
-          textResult = 'Chưa có lịch sử giao dịch!';
-        } else {
-          CONFIG.historyEnterOrder.forEach((e) => {
-            textResult += `${e.time} | ${e.sessionID} | ${e.trend} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
-          });
-        }
-        TeleGlobal.sendMessage(myTelegramID, textResult, {
-          parse_mode: "HTML",
-        });
+        db.query(
+          `SELECT * FROM histories ORDER BY id desc`,
+          [], (error, results) => {
+              if (error) {
+                console.log(error);
+                TeleGlobal.sendMessage(myTelegramID, `Truy vấn lịch sử thất bại!`, {
+                  parse_mode: "HTML",
+                });
+               } else {
+                 let textResult = '';
+   
+                 if (!results.length) {
+                   textResult = 'Chưa có lịch sử giao dịch!';
+                 } else {
+                   results.forEach((e) => {
+                     textResult += `${e.time} | ${e.sessionID} | ${e.trend} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
+                   });
+                 }
+                 TeleGlobal.sendMessage(myTelegramID, textResult, { parse_mode: "HTML" });
+               }
+          }
+        )
       }
     });
   });
@@ -388,7 +387,10 @@ function roleEnterOrder(sessionID, lastResult) {
   }
   CONFIG.historys.push({ sessionID, lastResult });
 
-  // PHIÊN ĐÃ VÀO LỆNH SẼ CHECK - sessionID - 1 = enterOrder.sessionID
+  /**
+   * PHIÊN ĐÃ VÀO LỆNH SẼ CHECK
+   * sessionID - 1 = enterOrder.sessionID
+   */
   function currentEnterOrderFn() {
     const indEnterOrder = CONFIG.enterOrderList.findIndex((e) => e.sessionID === sessionID - 1);
     if (indEnterOrder === -1) return undefined;
@@ -415,13 +417,15 @@ function roleEnterOrder(sessionID, lastResult) {
       );
       d.demoBalance += CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95;
 
-      CONFIG.historyEnterOrder.push({
-        sessionID: sessionID - 1,
-        trend: coverLastResult(lastResult),
-        time: currentEnterOrder.time,
-        isWin: true,
-        money: CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95,
-      });
+      db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) 
+      VALUES(?,?,?,?,?)`,
+      [
+          sessionID - 1,
+          coverLastResult(lastResult),
+          currentEnterOrder.time,
+          1, 
+          CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95, 
+      ]);
 
       deleteCurrentEnterOrder();
     } else {
@@ -439,13 +443,15 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
         );
         d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
 
-        CONFIG.historyEnterOrder.push({
-          sessionID: sessionID - 1,
-          trend: coverLastResult(lastResult),
-          time: currentEnterOrder.time,
-          isWin: false,
-          money: CONFIG.moneyEnterOrder[currentEnterOrder.ind],
-        });
+        db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) 
+        VALUES(?,?,?,?,?)`,
+        [
+            sessionID - 1,
+            coverLastResult(lastResult),
+            currentEnterOrder.time,
+            0, 
+            CONFIG.moneyEnterOrder[currentEnterOrder.ind], 
+        ]);
 
         currentEnterOrder.ind += 1;
         currentEnterOrder.enable = true;
@@ -462,18 +468,24 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
   }
 
   // 1. Số lệnh thông = 7 thì đánh lệnh ngược lại
-  const listContinue = CONFIG.historys.slice(
-    CONFIG.historys.length - CONFIG.countTradeContinue,
-    CONFIG.historys.length
-  );
   let isNotBreakdowUp = true; // Xanh
   let isNotBreakdowDown = true; // Đỏ
-  listContinue.reverse().forEach((e) => {
-    if (e.lastResult === 0) {
-      // Xanh
-      isNotBreakdowDown = false;
+  let totalEnterOrderContinue = 0;
+  const historyReverse = CONFIG.historys.reverse();
+  historyReverse.forEach((e, ind) => {
+    if (ind < CONFIG.countTradeContinue) {
+      if (e.lastResult === 0) {
+        // Xanh
+        isNotBreakdowDown = false;
+      } else {
+        isNotBreakdowUp = false;
+      }
+    }
+    // Đếm tổng lệnh thông
+    if (e.lastResult === historyReverse[0].lastResult && totalEnterOrderContinue !== -1) {
+      totalEnterOrderContinue += 1;
     } else {
-      isNotBreakdowUp = false;
+      totalEnterOrderContinue = -1;
     }
   });
 
@@ -483,7 +495,7 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
       CONFIG.historys.length >= CONFIG.countTradeContinue
   ) {
     const isEnterOrderd = CONFIG.enterOrderList.map((e) => e.sessionID).includes(sessionID + 1);
-    const textAlert = `Hệ thống đang thông ${CONFIG.countTradeContinue} lệnh ${coverLastResult(lastResult)} liên tiếp.`;
+    const textAlert = `Hệ thống đang thông ${totalEnterOrderContinue} lệnh ${coverLastResult(lastResult)} liên tiếp.`;
     if (isEnterOrderd) {
       TeleGlobal.sendMessage(
         TELEGRAM_CHANNEL,
