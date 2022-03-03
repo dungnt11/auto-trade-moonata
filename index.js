@@ -458,7 +458,7 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
   let isStopTotal = false;
   const historyReverse = JSON.parse(JSON.stringify(CONFIG.historys)).reverse();
   historyReverse.forEach((e, ind) => {
-    if (ind <= CONFIG.countTradeContinue) {
+    if (ind < CONFIG.countTradeContinue) {
       if (e.lastResult === 0) {
         // Xanh
         isNotBreakdowDown = false;
