@@ -43,8 +43,8 @@ let dInWeb = null; // Ví tiền theo web
  */
 const CONFIG = {
   autoTrade: true,
-  countTradeContinue: 2, // 7 lệnh thông thì đánh ngược lại
-  moneyEnterOrder: [5, 10, 20, 40, 80], // Nếu gặp 7 lệnh thông sẽ đánh ngược lại với từng mệnh giá này
+  countTradeContinue: 3, // 7 lệnh thông thì đánh ngược lại
+  moneyEnterOrder: [5, 5, 10, 20, 30], // Nếu gặp 7 lệnh thông sẽ đánh ngược lại với từng mệnh giá này
   maxHistory: 40, // Lưu lại lịch sử 40 phiên
   historys: [], // Lịch sử lệnh
   enterOrderList: [], // Lệnh đang vào
@@ -456,7 +456,7 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
   let isNotBreakdowDown = true; // Đỏ
   let totalEnterOrderContinue = 0;
   let isStopTotal = false;
-  const historyReverse = CONFIG.historys.reverse();
+  const historyReverse = JSON.parse(JSON.stringify(CONFIG.historys)).reverse();
   historyReverse.forEach((e, ind) => {
     if (ind <= CONFIG.countTradeContinue) {
       if (e.lastResult === 0) {
