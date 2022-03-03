@@ -260,7 +260,7 @@ puppeteer
 5. /set_money_enter:number1,number2 - Vào tiền khi đủ điều kiện;
 6. /history - Vào tiền khi đủ điều kiện;
 7. /check_tk - Check tiền ví;
-8. /view_history - Xem toàn bộ lịch sử vào lệnh;`,
+8. /view_history:[date] - Xem toàn bộ lịch sử vào lệnh; Ví dụ /view_history:3/3/2022`,
           { parse_mode: "HTML" }
         );
         return;
@@ -348,8 +348,9 @@ SELL: /sell:[number]`,
       }
 
       if (text.startsWith('/view_history')) {
+        const dateQuery = text.replace('/view_history:');
         db.query(
-          `SELECT * FROM histories ORDER BY id desc`,
+          `SELECT * FROM histories WHERE time like '%${dateQuery}' ORDER BY id asc`,
           [], (error, results) => {
               if (error) {
                 console.log(error);
