@@ -37,6 +37,8 @@ let lastResult = null;
 let currentSessionID = null;
 let d = null; // Ví tiền user
 let dInWeb = null; // Ví tiền theo web
+let currentColorCandle = -1; // Nến hiện tại
+let totalColorCandle = 0;
 
 /**
  * Tất cả config ở đây
@@ -387,6 +389,21 @@ function roleEnterOrder(sessionID, lastResult) {
     CONFIG.historys.shift();
   }
   CONFIG.historys.push({ sessionID, lastResult });
+
+  // Thêm dữ liệu vào thống kê
+  if (currentColorCandle === -1) {
+    currentColorCandle = lastResult;
+    totalColorCandle += 1;
+  } else {
+    if (currentColorCandle === lastResult) {
+      // Nếu phiên tiếp theo trùng màu với phiên trước đó thì tăng số lượng nến trùng lên
+      totalColorCandle += 1;
+    } else {
+      db.query(`INSERT INTO analytics (trend, date, count) VALUES(${currentColorCandle}, '${new Date().toLocaleString('vi-VN')}', ${totalColorCandle})`);
+      totalColorCandle = 1;
+      currentColorCandle = lastResult;
+    }
+  }
 
   /**
    * PHIÊN ĐÃ VÀO LỆNH SẼ CHECK
