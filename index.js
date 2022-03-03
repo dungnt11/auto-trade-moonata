@@ -363,7 +363,7 @@ SELL: /sell:[number]`,
                    textResult = 'Chưa có lịch sử giao dịch!';
                  } else {
                    results.forEach((e) => {
-                     textResult += `${e.time} | ${e.sessionID} | ${e.trend} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
+                     textResult += `${e.time} | ${e.sessionID} | ${coverLastResult(e.trend)} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
                    });
                  }
                  TeleGlobal.sendMessage(myTelegramID, textResult, { parse_mode: "HTML" });
@@ -417,15 +417,7 @@ function roleEnterOrder(sessionID, lastResult) {
       );
       d.demoBalance += CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95;
 
-      db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) 
-      VALUES(?,?,?,?,?)`,
-      [
-          sessionID - 1,
-          coverLastResult(lastResult),
-          currentEnterOrder.time,
-          1, 
-          CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95, 
-      ]);
+      db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${sessionID - 1}, ${lastResult}, '${currentEnterOrder.time}', 1, ${CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95})`);
 
       deleteCurrentEnterOrder();
     } else {
@@ -443,15 +435,7 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
         );
         d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
 
-        db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) 
-        VALUES(?,?,?,?,?)`,
-        [
-            sessionID - 1,
-            coverLastResult(lastResult),
-            currentEnterOrder.time,
-            0, 
-            CONFIG.moneyEnterOrder[currentEnterOrder.ind], 
-        ]);
+        db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${sessionID - 1}, ${lastResult}, '${currentEnterOrder.time}', 0, ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]})`);
 
         currentEnterOrder.ind += 1;
         currentEnterOrder.enable = true;
@@ -471,6 +455,7 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
   let isNotBreakdowUp = true; // Xanh
   let isNotBreakdowDown = true; // Đỏ
   let totalEnterOrderContinue = 0;
+  let isStopTotal = false;
   const historyReverse = CONFIG.historys.reverse();
   historyReverse.forEach((e, ind) => {
     if (ind < CONFIG.countTradeContinue) {
@@ -482,10 +467,10 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
       }
     }
     // Đếm tổng lệnh thông
-    if (e.lastResult === historyReverse[0].lastResult && totalEnterOrderContinue !== -1) {
+    if (e.lastResult === historyReverse[0].lastResult && !isStopTotal) {
       totalEnterOrderContinue += 1;
     } else {
-      totalEnterOrderContinue = -1;
+      isStopTotal = true;
     }
   });
 

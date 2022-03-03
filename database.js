@@ -1,20 +1,16 @@
-const { createPool } = require('mysql');
+const mysql = require('mysql2');
 
-const CONFIG = {
-  DATA_HOST: 'localhost',
-	DATA_USER: 'root',
-	DATA_PASS: 'Xinchao@123!',
-	DATA_DB: 'auto_trade',
-	DATA_PORT: 3306,
-}
-
-const pool = createPool({
-  host: CONFIG.DATA_HOST,
-  user: CONFIG.DATA_USER,
-  password: CONFIG.DATA_PASS,
-  database: CONFIG.DATA_DB,
-  port: CONFIG.DATA_PORT,
-  connectionLimit: 10
+const connection = mysql.createConnection({
+  host: '128.199.96.244',
+  user: 'root',
+  password: 'Xinchao@123!',
+  database: 'auto_trade',
+	port: 3306,
 });
 
-module.exports = pool;
+connection.connect(function (err) {
+  if (err) throw err;
+  console.log("Connected!");
+});
+
+module.exports = connection;
