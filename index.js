@@ -348,7 +348,7 @@ SELL: /sell:[number]`,
       }
 
       if (text.startsWith('/view_history')) {
-        const dateQuery = text.replace('/view_history:');
+        const dateQuery = text.replace('/view_history:', '');
         db.query(
           `SELECT * FROM histories WHERE time like '%${dateQuery}' ORDER BY id asc`,
           [], (error, results) => {
