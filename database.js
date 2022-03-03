@@ -1,7 +1,7 @@
 const { createPool } = require('mysql');
 
 const CONFIG = {
-  DATA_HOST: '128.199.96.244',
+  DATA_HOST: 'localhost',
 	DATA_USER: 'root',
 	DATA_PASS: 'Xinchao@123!',
 	DATA_DB: 'auto_trade',
