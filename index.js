@@ -110,7 +110,16 @@ puppeteer
           CONFIG.enterOrderList[indSessionID].enable = false;
           CONFIG.enterOrderList[indSessionID].time = new Date().toLocaleString('vi-VN');
           const moneyEnterOrder = CONFIG.moneyEnterOrder[CONFIG.enterOrderList[indSessionID].ind];
-          await enterOrderFn(CONFIG.enterOrderList[indSessionID].trend === 0 ? 'buy' : 'sell', moneyEnterOrder, TELEGRAM_CHANNEL, CONFIG.enterOrderList[indSessionID].sessionID);
+          if (moneyEnterOrder) {
+            // Nếu set 0,0,0 thì bỏ qua những lệnh này
+            await enterOrderFn(CONFIG.enterOrderList[indSessionID].trend === 0 ? 'buy' : 'sell', moneyEnterOrder, TELEGRAM_CHANNEL, CONFIG.enterOrderList[indSessionID].sessionID);
+          } else {
+            TeleGlobal.sendMessage(
+              TELEGRAM_CHANNEL,
+              `⚡️ Đang trong phiên break lệnh!`,
+              { parse_mode: "HTML" }
+            );
+          }
         }
       }
 
@@ -440,7 +449,7 @@ function roleEnterOrder(sessionID, lastResult) {
       deleteCurrentEnterOrder();
     } else {
       // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
-      if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length) {
+      if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length && CONFIG.moneyEnterOrder[currentEnterOrder.ind + 1]) {
         currentEnterOrder.sessionID += 2;
         TeleGlobal.sendMessage(
           TELEGRAM_CHANNEL,
