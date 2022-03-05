@@ -284,7 +284,8 @@ puppeteer
 8. /view_history:[date] - Xem toàn bộ lịch sử vào lệnh; Ví dụ /view_history:3/3/2022;
 9. /analytics - Xem toàn bộ thống kê;
 10. /interrupted:number - Cắt lời;
-11. /reset_interrupted - Reset lãi ngày, tức là qua 1 ngày cần config lại cái này. Để hệ thống reset lãi về 0;`,
+11. /reset_interrupted - Reset lãi ngày, tức là qua 1 ngày cần config lại cái này. Để hệ thống reset lãi về 0;
+12. /sync_money - Đồng bộ tiền tính toán theo phiên và tiền trong ví;`,
           { parse_mode: "HTML" }
         );
         return;
@@ -465,6 +466,18 @@ SELL: /sell:[number]`,
           `Reset cắt lãi thành công!`,
           { parse_mode: "HTML" }
         );
+        return;
+      }
+
+      if (text === '/sync_money') {
+        if (dInWeb && dInWeb.demoBalance) {
+          d.demoBalance = dInWeb.demoBalance;
+          TeleGlobal.sendMessage(
+            myTelegramID,
+            `Đồng bộ tiền thành công!`,
+            { parse_mode: "HTML" }
+          );
+        }
         return;
       }
     });
