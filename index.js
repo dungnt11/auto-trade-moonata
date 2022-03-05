@@ -39,6 +39,7 @@ let d = null; // Ví tiền user
 let dInWeb = null; // Ví tiền theo web
 let currentColorCandle = -1; // Nến hiện tại
 let totalColorCandle = 0;
+let interrupted = 0; // Lãi thực tế
 
 /**
  * Tất cả config ở đây
@@ -50,6 +51,7 @@ const CONFIG = {
   maxHistory: 40, // Lưu lại lịch sử 40 phiên
   historys: [], // Lịch sử lệnh
   enterOrderList: [], // Lệnh đang vào
+  interrupted: 50, // Cắt lời
 };
 
 puppeteer
@@ -103,26 +105,29 @@ puppeteer
         } catch (error) {
           console.log(`Không tìm thấy page!`);
         }
-        currentSessionID = isDisableBtn
-          ? JSON.parse(data.substr(2, data.length))[1].session
-          : -1;
+        currentSessionID = isDisableBtn ? JSON.parse(data.substr(2, data.length))[1].session : -1;
         // if (currentSessionID !== -1) console.log('currentSessionID', currentSessionID);
         const indSessionID = CONFIG.enterOrderList.findIndex(
           (e) => e.sessionID === currentSessionID && e.enable
         );
-        if (indSessionID > -1 && isDisableBtn) {
-          CONFIG.enterOrderList[indSessionID].enable = false;
-          CONFIG.enterOrderList[indSessionID].time = new Date().toLocaleString(
-            "vi-VN"
-          );
-          const moneyEnterOrder =
-            CONFIG.moneyEnterOrder[CONFIG.enterOrderList[indSessionID].ind];
-          await enterOrderFn(
-            CONFIG.enterOrderList[indSessionID].trend === 0 ? "buy" : "sell",
-            moneyEnterOrder,
-            TELEGRAM_CHANNEL,
-            CONFIG.enterOrderList[indSessionID].sessionID
-          );
+
+        if (interrupted > CONFIG.interrupted) {
+          // Đủ tiền lãi hằng ngày rồi, không vào thêm lệnh nữa
+          CONFIG.enterOrderList = [];
+        } else {
+          if (indSessionID > -1 && isDisableBtn) {
+            CONFIG.enterOrderList[indSessionID].enable = false;
+            CONFIG.enterOrderList[indSessionID].time = new Date().toLocaleString(
+              "vi-VN"
+            );
+            const moneyEnterOrder = CONFIG.moneyEnterOrder[CONFIG.enterOrderList[indSessionID].ind];
+            await enterOrderFn(
+              CONFIG.enterOrderList[indSessionID].trend === 0 ? "buy" : "sell",
+              moneyEnterOrder,
+              TELEGRAM_CHANNEL,
+              CONFIG.enterOrderList[indSessionID].sessionID
+            );
+          }
         }
       }
 
@@ -276,7 +281,10 @@ puppeteer
 5. /set_money_enter:number1,number2 - Vào tiền khi đủ điều kiện;
 6. /history - Vào tiền khi đủ điều kiện;
 7. /check_tk - Check tiền ví;
-8. /view_history:[date] - Xem toàn bộ lịch sử vào lệnh; Ví dụ /view_history:3/3/2022`,
+8. /view_history:[date] - Xem toàn bộ lịch sử vào lệnh; Ví dụ /view_history:3/3/2022;
+9. /analytics - Xem toàn bộ thống kê;
+10. /interrupted:number - Cắt lời;
+11. /reset_interrupted - Reset lãi ngày, tức là qua 1 ngày cần config lại cái này. Để hệ thống reset lãi về 0;`,
           { parse_mode: "HTML" }
         );
         return;
@@ -405,6 +413,60 @@ SELL: /sell:[number]`,
           }
         );
       }
+
+      if (text === "/analytics") {
+        db.query(
+          `select count(id) as so_lan_xuat_hien, count as nen_thong from analytics GROUP BY count`,
+          [],
+          (error, results) => {
+            if (error) {
+              console.log(error);
+              TeleGlobal.sendMessage(
+                myTelegramID,
+                `Truy vấn thống kê thất bại!`,
+                {
+                  parse_mode: "HTML",
+                }
+              );
+            } else {
+              let textResult = `<b>Top Brackets</b>\n
+              Số lần xuất hiện   Nến thông\n`;
+              if (!results.length) {
+                textResult = "Chưa có thống kê lịch sử!";
+              } else {
+                results.forEach((e) => {
+                  textResult += `<b>${e.so_lan_xuat_hien}</b> ------ ${e.nen_thong}\n`;
+                });
+              }
+              TeleGlobal.sendMessage(myTelegramID, textResult, {
+                parse_mode: "HTML",
+              });
+            }
+          }
+        );
+      }
+
+
+      if (text.startsWith("/interrupted")) {
+        const interrupted = text.replace("/interrupted:", "");
+        CONFIG.interrupted = interrupted;
+        TeleGlobal.sendMessage(
+          myTelegramID,
+          `Cập nhật thành công tiền cắt lời ${interrupted}!`,
+          { parse_mode: "HTML" }
+        );
+        return;
+      }
+
+      if (text === '/reset_interrupted') {
+        interrupted = 0;
+        TeleGlobal.sendMessage(
+          myTelegramID,
+          `Reset cắt lãi thành công!`,
+          { parse_mode: "HTML" }
+        );
+        return;
+      }
     });
   });
 
@@ -476,6 +538,7 @@ function roleEnterOrder(sessionID, lastResult) {
         { parse_mode: "HTML" }
       );
       d.demoBalance += CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95;
+      interrupted += CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95;
 
       db.query(
         `INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${
@@ -506,6 +569,7 @@ function roleEnterOrder(sessionID, lastResult) {
             { parse_mode: "HTML" }
           );
           d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
+          interrupted -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
 
           db.query(
             `INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${
@@ -533,6 +597,14 @@ function roleEnterOrder(sessionID, lastResult) {
           { parse_mode: "HTML" }
         );
       }
+    }
+
+    if (interrupted > CONFIG.interrupted) {
+      TeleGlobal.sendMessage(
+        TELEGRAM_CHANNEL,
+        `Số lãi trong ngày (${interrupted}) lớn hơn số lãi config(${CONFIG.interrupted}). Hệ thống sẽ dừng lại!`,
+        { parse_mode: "HTML" }
+      );
     }
   }
 
