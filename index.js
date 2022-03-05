@@ -96,30 +96,33 @@ puppeteer
           isDisableBtn = await page.evaluate(() => {
             if (!document) return false;
             const btnCheck = document.querySelector(
-                "#betAmount > div:nth-child(5) > div > div:nth-child(1) > button"
+              "#betAmount > div:nth-child(5) > div > div:nth-child(1) > button"
             );
             return btnCheck && !btnCheck.hasAttribute("disabled");
-          }); 
+          });
         } catch (error) {
           console.log(`Không tìm thấy page!`);
         }
-        currentSessionID = isDisableBtn ? JSON.parse(data.substr(2, data.length))[1].session : -1;
+        currentSessionID = isDisableBtn
+          ? JSON.parse(data.substr(2, data.length))[1].session
+          : -1;
         // if (currentSessionID !== -1) console.log('currentSessionID', currentSessionID);
-        const indSessionID = CONFIG.enterOrderList.findIndex((e) => e.sessionID === currentSessionID && e.enable);
+        const indSessionID = CONFIG.enterOrderList.findIndex(
+          (e) => e.sessionID === currentSessionID && e.enable
+        );
         if (indSessionID > -1 && isDisableBtn) {
           CONFIG.enterOrderList[indSessionID].enable = false;
-          CONFIG.enterOrderList[indSessionID].time = new Date().toLocaleString('vi-VN');
-          const moneyEnterOrder = CONFIG.moneyEnterOrder[CONFIG.enterOrderList[indSessionID].ind];
-          if (moneyEnterOrder) {
-            // Nếu set 0,0,0 thì bỏ qua những lệnh này
-            await enterOrderFn(CONFIG.enterOrderList[indSessionID].trend === 0 ? 'buy' : 'sell', moneyEnterOrder, TELEGRAM_CHANNEL, CONFIG.enterOrderList[indSessionID].sessionID);
-          } else {
-            TeleGlobal.sendMessage(
-              TELEGRAM_CHANNEL,
-              `⚡️ Đang trong phiên break lệnh!`,
-              { parse_mode: "HTML" }
-            );
-          }
+          CONFIG.enterOrderList[indSessionID].time = new Date().toLocaleString(
+            "vi-VN"
+          );
+          const moneyEnterOrder =
+            CONFIG.moneyEnterOrder[CONFIG.enterOrderList[indSessionID].ind];
+          await enterOrderFn(
+            CONFIG.enterOrderList[indSessionID].trend === 0 ? "buy" : "sell",
+            moneyEnterOrder,
+            TELEGRAM_CHANNEL,
+            CONFIG.enterOrderList[indSessionID].sessionID
+          );
         }
       }
 
@@ -173,18 +176,18 @@ puppeteer
       console.log("Vào webSocketCreated");
     });
 
-    page.on('response', async (response) => {
+    page.on("response", async (response) => {
       const request = response.request();
-      if (request.url().includes('binaryoption/spot-balance')){
-          const res = await response.json();
-          if (res.ok) {
-            if (!d) {
-              d = res.d;
-            }
-            dInWeb = res.d;
+      if (request.url().includes("binaryoption/spot-balance")) {
+        const res = await response.json();
+        if (res.ok) {
+          if (!d) {
+            d = res.d;
           }
+          dInWeb = res.d;
+        }
       }
-    })
+    });
 
     // Vào lệnh: type - buy/sell
     async function enterOrderFn(type, countMoney, myTelegramID, sessionIDArg) {
@@ -217,7 +220,9 @@ puppeteer
       if (isEnterOrderSuccess) {
         TeleGlobal.sendMessage(
           myTelegramID,
-          `👌 Đặt lệnh ${type} | ${countMoney}$ ${` | ${sessionIDArg}` || ""} thành công!`,
+          `👌 Đặt lệnh ${type} | ${countMoney}$ ${
+            ` | ${sessionIDArg}` || ""
+          } thành công!`,
           { parse_mode: "HTML" }
         );
       } else {
@@ -233,30 +238,30 @@ puppeteer
     TeleGlobal.on("message", async ({ text, from }) => {
       const myTelegramID = from.id;
 
-      if (text.toLowerCase() === 't') {
+      if (text.toLowerCase() === "t") {
         const enterOrder = {
           enable: true,
           ind: 0, // Lần vào lệnh thua
           isWin: false,
           trend: 0, // Lệnh vào buy
           sessionID: currentSessionID + (currentSessionID === -1 ? 1 : 2), // Phiên vào lệnh
-          time: '', // Tgian vào lệnh
-        }
+          time: "", // Tgian vào lệnh
+        };
         CONFIG.enterOrderList.push(enterOrder);
 
         TeleGlobal.sendMessage(
-            myTelegramID,
-            `Bạn đang vào chế độ test. Bạn sẽ vào lệnh buy ở phiên ${enterOrder.sessionID}!`,
-            { parse_mode: "HTML" }
+          myTelegramID,
+          `Bạn đang vào chế độ test. Bạn sẽ vào lệnh buy ở phiên ${enterOrder.sessionID}!`,
+          { parse_mode: "HTML" }
         );
         return;
       }
 
       if (text.toLowerCase() === "kq") {
         TeleGlobal.sendMessage(
-            myTelegramID,
-            JSON.stringify(CONFIG.enterOrderList, null, 2),
-            { parse_mode: "HTML" }
+          myTelegramID,
+          JSON.stringify(CONFIG.enterOrderList, null, 2),
+          { parse_mode: "HTML" }
         );
         return;
       }
@@ -290,11 +295,9 @@ puppeteer
 
       if (text === "/check_tk") {
         if (!dInWeb) {
-          TeleGlobal.sendMessage(
-              myTelegramID,
-              `Chưa lấy được thông tin ví`,
-              { parse_mode: "HTML" }
-          );
+          TeleGlobal.sendMessage(myTelegramID, `Chưa lấy được thông tin ví`, {
+            parse_mode: "HTML",
+          });
 
           return;
         }
@@ -312,11 +315,9 @@ puppeteer
 
       if (text === "/enable_auto_trade") {
         CONFIG.autoTrade = true;
-        TeleGlobal.sendMessage(
-          myTelegramID,
-          `Bật auto trade thành công!`,
-          { parse_mode: "HTML" }
-        );
+        TeleGlobal.sendMessage(myTelegramID, `Bật auto trade thành công!`, {
+          parse_mode: "HTML",
+        });
         return;
       }
 
@@ -340,52 +341,72 @@ SELL: /sell:[number]`,
         return;
       }
 
-      if (text.startsWith('/set_count_trade')) {
+      if (text.startsWith("/set_count_trade")) {
         const countTrade = Number(text.replace("/set_count_trade:", ""));
         CONFIG.countTradeContinue = countTrade;
-        TeleGlobal.sendMessage(myTelegramID, `Cập nhật thành công. ${countTrade} lệnh thông thì đánh ngược lại`, {
-          parse_mode: "HTML",
-        });
+        TeleGlobal.sendMessage(
+          myTelegramID,
+          `Cập nhật thành công. ${countTrade} lệnh thông thì đánh ngược lại`,
+          {
+            parse_mode: "HTML",
+          }
+        );
         return;
       }
 
-      if (text.startsWith('/set_money_enter')) {
-        const moneyEnterOrderNew = text.replace("/set_money_enter:", "").split(',');
+      if (text.startsWith("/set_money_enter")) {
+        const moneyEnterOrderNew = text
+          .replace("/set_money_enter:", "")
+          .split(",");
         CONFIG.moneyEnterOrder = moneyEnterOrderNew;
-        TeleGlobal.sendMessage(myTelegramID, `Cập nhật thành công. ${moneyEnterOrderNew.join(',')} số tiền giới hạn khi đánh đảo chiều`, {
-          parse_mode: "HTML",
-        });
+        TeleGlobal.sendMessage(
+          myTelegramID,
+          `Cập nhật thành công. ${moneyEnterOrderNew.join(
+            ","
+          )} số tiền giới hạn khi đánh đảo chiều`,
+          {
+            parse_mode: "HTML",
+          }
+        );
         return;
       }
 
-      if (text.startsWith('/view_history')) {
-        const dateQuery = text.replace('/view_history:', '');
+      if (text.startsWith("/view_history")) {
+        const dateQuery = text.replace("/view_history:", "");
         db.query(
           `SELECT * FROM histories WHERE time like '%${dateQuery}' ORDER BY id asc`,
-          [], (error, results) => {
-              if (error) {
-                console.log(error);
-                TeleGlobal.sendMessage(myTelegramID, `Truy vấn lịch sử thất bại!`, {
+          [],
+          (error, results) => {
+            if (error) {
+              console.log(error);
+              TeleGlobal.sendMessage(
+                myTelegramID,
+                `Truy vấn lịch sử thất bại!`,
+                {
                   parse_mode: "HTML",
+                }
+              );
+            } else {
+              let textResult = "";
+
+              if (!results.length) {
+                textResult = "Chưa có lịch sử giao dịch!";
+              } else {
+                results.forEach((e) => {
+                  textResult += `${e.time} | ${e.sessionID} | ${coverLastResult(
+                    e.trend
+                  )} | ${e.isWin ? "Thắng" : "Thua"} ${e.money}$\n`;
                 });
-               } else {
-                 let textResult = '';
-   
-                 if (!results.length) {
-                   textResult = 'Chưa có lịch sử giao dịch!';
-                 } else {
-                   results.forEach((e) => {
-                     textResult += `${e.time} | ${e.sessionID} | ${coverLastResult(e.trend)} | ${e.isWin ? 'Thắng' : 'Thua'} ${e.money}$\n`;
-                   });
-                 }
-                 TeleGlobal.sendMessage(myTelegramID, textResult, { parse_mode: "HTML" });
-               }
+              }
+              TeleGlobal.sendMessage(myTelegramID, textResult, {
+                parse_mode: "HTML",
+              });
+            }
           }
-        )
+        );
       }
     });
   });
-
 
 /**
  * Hàm này xử lý sau mỗi phiên có kết quả
@@ -408,7 +429,11 @@ function roleEnterOrder(sessionID, lastResult) {
       // Nếu phiên tiếp theo trùng màu với phiên trước đó thì tăng số lượng nến trùng lên
       totalColorCandle += 1;
     } else {
-      db.query(`INSERT INTO analytics (trend, date, count) VALUES(${currentColorCandle}, '${new Date().toLocaleString('vi-VN')}', ${totalColorCandle})`);
+      db.query(
+        `INSERT INTO analytics (trend, date, count) VALUES(${currentColorCandle}, '${new Date().toLocaleString(
+          "vi-VN"
+        )}', ${totalColorCandle})`
+      );
       totalColorCandle = 1;
       currentColorCandle = lastResult;
     }
@@ -419,14 +444,18 @@ function roleEnterOrder(sessionID, lastResult) {
    * sessionID - 1 = enterOrder.sessionID
    */
   function currentEnterOrderFn() {
-    const indEnterOrder = CONFIG.enterOrderList.findIndex((e) => e.sessionID === sessionID - 1);
+    const indEnterOrder = CONFIG.enterOrderList.findIndex(
+      (e) => e.sessionID === sessionID - 1
+    );
     if (indEnterOrder === -1) return undefined;
     return CONFIG.enterOrderList[indEnterOrder];
   }
 
   // Xoá phiên hiện tại
   function deleteCurrentEnterOrder() {
-    CONFIG.enterOrderList = CONFIG.enterOrderList.filter((e) => e.sessionID !== sessionID - 1);
+    CONFIG.enterOrderList = CONFIG.enterOrderList.filter(
+      (e) => e.sessionID !== sessionID - 1
+    );
   }
 
   const currentEnterOrder = currentEnterOrderFn();
@@ -435,38 +464,67 @@ function roleEnterOrder(sessionID, lastResult) {
     if (currentEnterOrder.trend === lastResult) {
       // WIN session
       TeleGlobal.sendMessage(
-          TELEGRAM_CHANNEL,
-`🎉 Bạn vừa thắng lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
+        TELEGRAM_CHANNEL,
+        `🎉 Bạn vừa thắng lệnh phiên ${
+          sessionID - 1
+        } với lệnh ${coverLastResult(lastResult)}.
 ⏰ Vào lệnh: ${currentEnterOrder.time}
 💰 Lãi: ${CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95}$
-💰 Tổng: ${d.demoBalance + CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95}`,
-          { parse_mode: "HTML" }
+💰 Tổng: ${
+          d.demoBalance + CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95
+        }`,
+        { parse_mode: "HTML" }
       );
       d.demoBalance += CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95;
 
-      db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${sessionID - 1}, ${lastResult}, '${currentEnterOrder.time}', 1, ${CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95})`);
+      db.query(
+        `INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${
+          sessionID - 1
+        }, ${lastResult}, '${currentEnterOrder.time}', 1, ${
+          CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95
+        })`
+      );
 
       deleteCurrentEnterOrder();
     } else {
       // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
-      if (currentEnterOrder.ind < CONFIG.moneyEnterOrder.length && CONFIG.moneyEnterOrder[currentEnterOrder.ind + 1]) {
-        currentEnterOrder.sessionID += 2;
-        TeleGlobal.sendMessage(
-          TELEGRAM_CHANNEL,
-`🏳 Bạn vừa thua lệnh phiên ${sessionID - 1} với lệnh ${coverLastResult(lastResult)}.
-⏰ Vào lệnh: ${currentEnterOrder.time}
-💰 Thua: ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
-💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
-Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
+      if (
+        currentEnterOrder.ind < CONFIG.moneyEnterOrder.length &&
+        typeof CONFIG.moneyEnterOrder[currentEnterOrder.ind + 1] !== "undefined"
+      ) {
+        if (CONFIG.moneyEnterOrder[currentEnterOrder.ind + 1]) {
+          currentEnterOrder.sessionID += 2;
+          TeleGlobal.sendMessage(
+            TELEGRAM_CHANNEL,
+            `🏳 Bạn vừa thua lệnh phiên ${
+              sessionID - 1
+            } với lệnh ${coverLastResult(lastResult)}.
+  ⏰ Vào lệnh: ${currentEnterOrder.time}
+  💰 Thua: ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
+  💰 Tổng: ${d.demoBalance - CONFIG.moneyEnterOrder[currentEnterOrder.ind]}$
+  Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
             { parse_mode: "HTML" }
-        );
-        d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
+          );
+          d.demoBalance -= CONFIG.moneyEnterOrder[currentEnterOrder.ind];
 
-        db.query(`INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${sessionID - 1}, ${lastResult}, '${currentEnterOrder.time}', 0, ${CONFIG.moneyEnterOrder[currentEnterOrder.ind]})`);
+          db.query(
+            `INSERT INTO histories (sessionID, trend, time, isWin, money) VALUES(${
+              sessionID - 1
+            }, ${lastResult}, '${currentEnterOrder.time}', 0, ${
+              CONFIG.moneyEnterOrder[currentEnterOrder.ind]
+            })`
+          );
 
-        currentEnterOrder.ind += 1;
-        currentEnterOrder.enable = true;
-        currentEnterOrder.time = '';
+          currentEnterOrder.ind += 1;
+          currentEnterOrder.enable = true;
+          currentEnterOrder.time = "";
+        } else {
+          TeleGlobal.sendMessage(
+            TELEGRAM_CHANNEL,
+            `⚡️ Đang trong phiên break lệnh!`,
+            { parse_mode: "HTML" }
+          );
+        }
       } else {
         deleteCurrentEnterOrder();
         TeleGlobal.sendMessage(
@@ -503,15 +561,21 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
 
   // TỰ VÀO LỆNH KHI ĐỦ ĐIỀU KIỆN
   if (
-      (isNotBreakdowUp || isNotBreakdowDown) &&
-      CONFIG.historys.length >= CONFIG.countTradeContinue
+    (isNotBreakdowUp || isNotBreakdowDown) &&
+    CONFIG.historys.length >= CONFIG.countTradeContinue
   ) {
-    const isEnterOrderd = CONFIG.enterOrderList.map((e) => e.sessionID).includes(sessionID + 1);
-    const textAlert = `Hệ thống đang thông ${totalEnterOrderContinue} lệnh ${coverLastResult(lastResult)} liên tiếp.`;
+    const isEnterOrderd = CONFIG.enterOrderList
+      .map((e) => e.sessionID)
+      .includes(sessionID + 1);
+    const textAlert = `Hệ thống đang thông ${totalEnterOrderContinue} lệnh ${coverLastResult(
+      lastResult
+    )} liên tiếp.`;
     if (isEnterOrderd) {
       TeleGlobal.sendMessage(
         TELEGRAM_CHANNEL,
-        `${textAlert} Bạn đã thua lệnh trước (${sessionID - 1}) nên hệ thống tự vào lệnh tiếp theo theo config!`,
+        `${textAlert} Bạn đã thua lệnh trước (${
+          sessionID - 1
+        }) nên hệ thống tự vào lệnh tiếp theo theo config!`,
         { parse_mode: "HTML" }
       );
       return;
@@ -531,22 +595,24 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
         isWin: true,
         trend: trendEnterOrder, // Lệnh vào
         sessionID: sessionID + 1, // Phiên vào lệnh
-        time: '', // Tgian vào lệnh
-      }
-      
+        time: "", // Tgian vào lệnh
+      };
+
       CONFIG.enterOrderList.push(enterOrder);
 
       if (CONFIG.autoTrade) {
         TeleGlobal.sendMessage(
-            TELEGRAM_CHANNEL,
-            `${textAlert} Hệ thống đã tự vào lệnh ${coverLastResult(enterOrder.trend)} cho phiên sau(${enterOrder.sessionID})!`,
-            { parse_mode: "HTML" }
+          TELEGRAM_CHANNEL,
+          `${textAlert} Hệ thống đã tự vào lệnh ${coverLastResult(
+            enterOrder.trend
+          )} cho phiên sau(${enterOrder.sessionID})!`,
+          { parse_mode: "HTML" }
         );
       } else {
         TeleGlobal.sendMessage(
-            TELEGRAM_CHANNEL,
-            `${textAlert} Mời bạn vào lệnh phiên sau!`,
-            { parse_mode: "HTML" }
+          TELEGRAM_CHANNEL,
+          `${textAlert} Mời bạn vào lệnh phiên sau!`,
+          { parse_mode: "HTML" }
         );
       }
     }
@@ -555,10 +621,50 @@ Bạn sẽ vào lệnh ở phiên tiếp theo(${currentEnterOrder.sessionID})!`,
 
 function drawHistory() {
   return `
-${coverLastResult(CONFIG.historys[0])} ${coverLastResult(CONFIG.historys[4])} ${coverLastResult(CONFIG.historys[8])} ${coverLastResult(CONFIG.historys[12])} ${coverLastResult(CONFIG.historys[16])}    ${coverLastResult(CONFIG.historys[20])} ${coverLastResult(CONFIG.historys[24])} ${coverLastResult(CONFIG.historys[28])} ${coverLastResult(CONFIG.historys[32])} ${coverLastResult(CONFIG.historys[36])}
-${coverLastResult(CONFIG.historys[1])} ${coverLastResult(CONFIG.historys[5])} ${coverLastResult(CONFIG.historys[9])} ${coverLastResult(CONFIG.historys[13])} ${coverLastResult(CONFIG.historys[17])}    ${coverLastResult(CONFIG.historys[21])} ${coverLastResult(CONFIG.historys[25])} ${coverLastResult(CONFIG.historys[29])} ${coverLastResult(CONFIG.historys[33])} ${coverLastResult(CONFIG.historys[37])}
-${coverLastResult(CONFIG.historys[2])} ${coverLastResult(CONFIG.historys[6])} ${coverLastResult(CONFIG.historys[10])} ${coverLastResult(CONFIG.historys[14])} ${coverLastResult(CONFIG.historys[18])}    ${coverLastResult(CONFIG.historys[22])} ${coverLastResult(CONFIG.historys[26])} ${coverLastResult(CONFIG.historys[30])} ${coverLastResult(CONFIG.historys[34])} ${coverLastResult(CONFIG.historys[38])}
-${coverLastResult(CONFIG.historys[3])} ${coverLastResult(CONFIG.historys[7])} ${coverLastResult(CONFIG.historys[11])} ${coverLastResult(CONFIG.historys[15])} ${coverLastResult(CONFIG.historys[19])}    ${coverLastResult(CONFIG.historys[23])} ${coverLastResult(CONFIG.historys[27])} ${coverLastResult(CONFIG.historys[31])} ${coverLastResult(CONFIG.historys[35])} ${coverLastResult(CONFIG.historys[39])}
+${coverLastResult(CONFIG.historys[0])} ${coverLastResult(
+    CONFIG.historys[4]
+  )} ${coverLastResult(CONFIG.historys[8])} ${coverLastResult(
+    CONFIG.historys[12]
+  )} ${coverLastResult(CONFIG.historys[16])}    ${coverLastResult(
+    CONFIG.historys[20]
+  )} ${coverLastResult(CONFIG.historys[24])} ${coverLastResult(
+    CONFIG.historys[28]
+  )} ${coverLastResult(CONFIG.historys[32])} ${coverLastResult(
+    CONFIG.historys[36]
+  )}
+${coverLastResult(CONFIG.historys[1])} ${coverLastResult(
+    CONFIG.historys[5]
+  )} ${coverLastResult(CONFIG.historys[9])} ${coverLastResult(
+    CONFIG.historys[13]
+  )} ${coverLastResult(CONFIG.historys[17])}    ${coverLastResult(
+    CONFIG.historys[21]
+  )} ${coverLastResult(CONFIG.historys[25])} ${coverLastResult(
+    CONFIG.historys[29]
+  )} ${coverLastResult(CONFIG.historys[33])} ${coverLastResult(
+    CONFIG.historys[37]
+  )}
+${coverLastResult(CONFIG.historys[2])} ${coverLastResult(
+    CONFIG.historys[6]
+  )} ${coverLastResult(CONFIG.historys[10])} ${coverLastResult(
+    CONFIG.historys[14]
+  )} ${coverLastResult(CONFIG.historys[18])}    ${coverLastResult(
+    CONFIG.historys[22]
+  )} ${coverLastResult(CONFIG.historys[26])} ${coverLastResult(
+    CONFIG.historys[30]
+  )} ${coverLastResult(CONFIG.historys[34])} ${coverLastResult(
+    CONFIG.historys[38]
+  )}
+${coverLastResult(CONFIG.historys[3])} ${coverLastResult(
+    CONFIG.historys[7]
+  )} ${coverLastResult(CONFIG.historys[11])} ${coverLastResult(
+    CONFIG.historys[15]
+  )} ${coverLastResult(CONFIG.historys[19])}    ${coverLastResult(
+    CONFIG.historys[23]
+  )} ${coverLastResult(CONFIG.historys[27])} ${coverLastResult(
+    CONFIG.historys[31]
+  )} ${coverLastResult(CONFIG.historys[35])} ${coverLastResult(
+    CONFIG.historys[39]
+  )}
     `;
 }
 
