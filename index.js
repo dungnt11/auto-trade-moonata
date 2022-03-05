@@ -430,8 +430,7 @@ SELL: /sell:[number]`,
                 }
               );
             } else {
-              let textResult = `<b>Top Brackets</b>\n
-              Số lần xuất hiện   Nến thông\n`;
+              let textResult = `Số lần xuất hiện   Nến thông\n`;
               if (!results.length) {
                 textResult = "Chưa có thống kê lịch sử!";
               } else {
