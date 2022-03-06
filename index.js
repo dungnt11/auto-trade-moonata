@@ -40,6 +40,7 @@ let dInWeb = null; // Ví tiền theo web
 let currentColorCandle = -1; // Nến hiện tại
 let totalColorCandle = 0;
 let interrupted = 0; // Lãi thực tế
+let isShowWarningInterrupted = false;
 
 /**
  * Tất cả config ở đây
@@ -456,6 +457,7 @@ SELL: /sell:[number]`,
 
       if (text === '/reset_interrupted') {
         interrupted = 0;
+        isShowWarningInterrupted = false;
         TeleGlobal.sendMessage(
           myTelegramID,
           `Reset cắt lãi thành công!`,
@@ -540,13 +542,14 @@ function roleEnterOrder(sessionID, lastResult) {
 
   const currentEnterOrder = currentEnterOrderFn();
 
-  if (interrupted > CONFIG.interrupted) {
+  if (interrupted > CONFIG.interrupted && !isShowWarningInterrupted) {
     TeleGlobal.sendMessage(
       TELEGRAM_CHANNEL,
       `Số lãi trong ngày (${interrupted}) lớn hơn số lãi config(${CONFIG.interrupted}). Hệ thống sẽ dừng lại!`,
       { parse_mode: "HTML" }
     );
     CONFIG.enterOrderList = [];
+    isShowWarningInterrupted = true;
     return;
   }
 
