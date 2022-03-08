@@ -48,7 +48,7 @@ let isShowWarningInterrupted = false;
 const CONFIG = {
   autoTrade: true,
   countTradeContinue: 3, // 7 lệnh thông thì đánh ngược lại
-  moneyEnterOrder: [5, 5, 10, 20, 30], // Nếu gặp 7 lệnh thông sẽ đánh ngược lại với từng mệnh giá này
+  moneyEnterOrder: [5, 10, 20, 35, 70, 125, 0, 0, 0, 0, 0, 0, 0, 0], // Nếu gặp 7 lệnh thông sẽ đánh ngược lại với từng mệnh giá này
   maxHistory: 40, // Lưu lại lịch sử 40 phiên
   historys: [], // Lịch sử lệnh
   enterOrderList: [], // Lệnh đang vào
@@ -74,7 +74,7 @@ puppeteer
     await Promise.all([page.waitForNavigation()]);
 
     const job = new cron.CronJob({
-      cronTime: "45 0/1 * * * *",
+      cronTime: "50 0/1 * * * *",
       onTick: async function () {
         await page.reload({ waitUntil: ["networkidle0"] });
       },
@@ -84,8 +84,8 @@ puppeteer
     await cdp.send("Network.enable");
     await cdp.send("Page.enable");
     let id = 1;
+    let count = 0;
     let countStaticData = 0;
-    let count;
 
     const printResponse = async function (cdp, response) {
       if (!response.response || !page || !page.evaluate) {
@@ -147,9 +147,8 @@ puppeteer
           } else if (finalSide === "NORMAL") {
             lastResult = 2;
           }
-
+          // Không tính nến chờ
           if (currentSessionID !== -1) {
-            // Không tính nến chờ
             roleEnterOrder(dataParse.session, lastResult);
             // TeleGlobal.sendMessage(
             //     TELEGRAM_CHANNEL,
@@ -578,7 +577,6 @@ function roleEnterOrder(sessionID, lastResult) {
           CONFIG.moneyEnterOrder[currentEnterOrder.ind] * 0.95
         })`
       );
-
       deleteCurrentEnterOrder();
     } else {
       // Nếu vẫn còn vốn xoay vòng thì đánh tiếp
